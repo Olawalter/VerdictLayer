@@ -42,6 +42,7 @@ interface WalletState {
   // Internal — active EIP-1193 listeners so we can remove them
   _cleanupListeners: (() => void) | null
   _cleanupDiscovery: (() => void) | null
+  _attachListeners: (provider: EIP1193Provider) => void
 
   // Actions
   openModal: () => void
@@ -159,4 +160,4 @@ export const useWallet = create<WalletState>((set, get) => ({
       },
     })
   },
-} as WalletState & { _attachListeners: (p: EIP1193Provider) => void }))
+}))

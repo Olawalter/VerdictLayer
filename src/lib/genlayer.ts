@@ -26,7 +26,8 @@ export function resetClient(
   _client = createClient({
     chain: studionet,
     account: address as `0x${string}`,
-    provider: provider as Parameters<typeof createClient>[0]['provider'],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    provider: provider as any,
   })
 }
 
