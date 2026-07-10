@@ -5,7 +5,7 @@ import { studionet } from 'genlayer-js/chains'
 import { TransactionStatus } from 'genlayer-js/types'
 import type { EIP1193Provider } from './injectedWallets'
 
-export const CONTRACT_ADDRESS = '0x5D469e805de2Fe5A6340b4a91dF37eDd9C0114dE' as const
+export const CONTRACT_ADDRESS = '0xb20520521A383010E73fa69F1de193dF1785326c' as const
 
 // ---------------------------------------------------------------------------
 // Singleton client — rebuilt when wallet connects / changes account
@@ -95,7 +95,7 @@ export async function readContract(method: string, args: any[] = []) {
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function writeContract(method: string, args: any[] = []) {
+export async function writeContract(method: string, args: any[] = [], opts: { gas?: bigint; retries?: number } = {}) {
   await ensureStudioNetwork()
   const client = getClient()
   const hash = await client.writeContract({
@@ -103,6 +103,9 @@ export async function writeContract(method: string, args: any[] = []) {
     functionName: method,
     args,
     value: BigInt(0),
+    // Providing an explicit gas bypasses gen_call simulation, which is required
+    // for non-deterministic methods (gl.eq_principle) that fail during simulation.
+    ...(opts.gas ? { gas: opts.gas } : {}),
   })
   console.log(`[VerdictLayer] tx submitted: ${hash}`)
 
@@ -111,7 +114,7 @@ export async function writeContract(method: string, args: any[] = []) {
   const receipt = await client.waitForTransactionReceipt({
     hash,
     status: TransactionStatus.FINALIZED,
-    retries: 60,
+    retries: opts.retries ?? 60,
     interval: 3000,
   })
 
@@ -212,7 +215,11 @@ export async function submitResponse(params: {
 }
 
 export async function requestVerdict(agreement_id: string) {
-  return writeContract('request_verdict', [agreement_id])
+  // request_verdict uses gl.eq_principle.strict_eq (non-deterministic AI consensus).
+  // gen_call simulation fails for these — pass explicit gas to skip simulation.
+  // Validator consensus + single LLM call can take up to 3–4 minutes on studionet;
+  // use 120 retries × 3s = 6 minutes to avoid a false timeout.
+  return writeContract('request_verdict', [agreement_id], { gas: BigInt(10_000_000), retries: 120 })
 }
 
 export async function applyVerdict(agreement_id: string) {

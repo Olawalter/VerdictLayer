@@ -126,7 +126,7 @@ function buildTimeline(agreement: Agreement): TimelineEvent[] {
     })
   }
 
-  return events.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+  return events.sort((a, b) => (a.timestamp ?? '').localeCompare(b.timestamp ?? ''))
 }
 
 function EventIcon({ type }: { type: TimelineEvent['type'] }) {

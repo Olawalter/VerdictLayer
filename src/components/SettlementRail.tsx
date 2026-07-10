@@ -8,16 +8,14 @@ import { Agreement, AgreementStatus } from '@/types'
 import clsx from 'clsx'
 import { approveDelivery, applyVerdict, requestVerdict, fundAgreement, acceptAgreement } from '@/lib/genlayer'
 
-// Retry fetching live state after a write — studionet can take a few seconds
-// to make the new state readable. Polls up to 4 times with growing delays.
-async function retryRefresh(onRefresh: (() => void) | undefined) {
+// Retry fetching live state after a write — studionet can take several seconds
+// to make the new state readable. Polls up to 5 times with growing delays.
+async function retryRefresh(onRefresh: (() => Promise<void> | void) | undefined) {
   if (!onRefresh) return
-  const delays = [1000, 2000, 3000, 4000]
+  const delays = [2000, 3000, 4000, 5000, 6000]
   for (const delay of delays) {
     await new Promise((r) => setTimeout(r, delay))
-    onRefresh()
-    // Brief pause so React can re-render before we check again
-    await new Promise((r) => setTimeout(r, 200))
+    await onRefresh()
   }
 }
 
@@ -39,7 +37,7 @@ export default function SettlementRail({ agreement, onRefresh }: Props) {
   const [error, setError] = useState<string | null>(null)
   // fund form state
   const [fundAmount, setFundAmount] = useState(String(agreement.funding_amount || ''))
-  const [fundCurrency, setFundCurrency] = useState(agreement.currency || 'USDC')
+  const [fundCurrency, setFundCurrency] = useState(agreement.currency || 'GEN')
   const router = useRouter()
   const id = agreement.id
 
@@ -50,19 +48,23 @@ export default function SettlementRail({ agreement, onRefresh }: Props) {
       switch (action) {
         case 'fund':
           await fundAgreement(id, parseFloat(fundAmount), fundCurrency)
-          await retryRefresh(onRefresh)
+          await new Promise(r => setTimeout(r, 3000))
+          window.location.reload()
           break
         case 'accept':
           await acceptAgreement(id)
-          await retryRefresh(onRefresh)
+          await new Promise(r => setTimeout(r, 3000))
+          window.location.reload()
           break
         case 'approve':
           await approveDelivery(id)
-          await retryRefresh(onRefresh)
+          await new Promise(r => setTimeout(r, 3000))
+          window.location.reload()
           break
         case 'apply_verdict':
           await applyVerdict(id)
-          await retryRefresh(onRefresh)
+          await new Promise(r => setTimeout(r, 3000))
+          window.location.reload()
           break
         case 'request_verdict':
           await requestVerdict(id)
@@ -102,7 +104,7 @@ export default function SettlementRail({ agreement, onRefresh }: Props) {
                 onChange={(e) => setFundCurrency(e.target.value)}
                 className="border border-[#1E2A35] bg-[#080A0D] px-2 py-1.5 text-xs text-[#9AA6B2] focus:outline-none"
               >
-                {['USDC', 'ETH', 'USDT', 'DAI', 'GEN'].map((c) => (
+                {['GEN', 'USDC', 'ETH', 'USDT', 'DAI'].map((c) => (
                   <option key={c}>{c}</option>
                 ))}
               </select>

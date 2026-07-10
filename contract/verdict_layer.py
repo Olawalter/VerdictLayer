@@ -83,7 +83,7 @@ class VerdictLayer(gl.Contract):
         """Client locks funds. draft -> funded."""
         a = json.loads(self.agreements[agreement_id])
         assert a["status"] == "draft", f"Expected status draft, got {a['status']}"
-        assert str(gl.message.sender_address) == a["client_address"], "Only the client may fund"
+        assert str(gl.message.sender_address).lower() == a["client_address"].lower(), "Only the client may fund"
         a["funding_amount"] = amount
         a["currency"] = currency
         a["status"] = "funded"
@@ -94,7 +94,7 @@ class VerdictLayer(gl.Contract):
         """Worker accepts terms. funded -> accepted."""
         a = json.loads(self.agreements[agreement_id])
         assert a["status"] == "funded", f"Expected status funded, got {a['status']}"
-        assert str(gl.message.sender_address) == a["worker_address"], "Only the worker may accept"
+        assert str(gl.message.sender_address).lower() == a["worker_address"].lower(), "Only the worker may accept"
         a["status"] = "accepted"
         self.agreements[agreement_id] = json.dumps(a)
 
@@ -106,7 +106,7 @@ class VerdictLayer(gl.Contract):
         a = json.loads(self.agreements[agreement_id])
         assert a["status"] == "accepted", f"Expected status accepted, got {a['status']}"
         caller = str(gl.message.sender_address)
-        assert caller == a["worker_address"], "Only the worker may submit deliverables"
+        assert caller.lower() == a["worker_address"].lower(), "Only the worker may submit deliverables"
 
         for pkg in json.loads(evidence_packages_json):
             self.evidence_counter = self.evidence_counter + u256(1)
@@ -132,7 +132,7 @@ class VerdictLayer(gl.Contract):
         """Client approves without dispute. submitted -> finalized."""
         a = json.loads(self.agreements[agreement_id])
         assert a["status"] == "submitted", f"Expected status submitted, got {a['status']}"
-        assert str(gl.message.sender_address) == a["client_address"], "Only the client may approve"
+        assert str(gl.message.sender_address).lower() == a["client_address"].lower(), "Only the client may approve"
         a["status"] = "finalized"
         self.agreements[agreement_id] = json.dumps(a)
 
@@ -150,7 +150,7 @@ class VerdictLayer(gl.Contract):
         """Client opens a dispute. submitted -> disputed. Returns dispute_id."""
         a = json.loads(self.agreements[agreement_id])
         assert a["status"] == "submitted", f"Expected status submitted, got {a['status']}"
-        assert str(gl.message.sender_address) == a["client_address"], "Only the client may dispute"
+        assert str(gl.message.sender_address).lower() == a["client_address"].lower(), "Only the client may dispute"
 
         self.dispute_counter = self.dispute_counter + u256(1)
         dispute_id = f"DS-{int(self.dispute_counter):04d}"
@@ -184,7 +184,7 @@ class VerdictLayer(gl.Contract):
         a = json.loads(self.agreements[agreement_id])
         assert a["status"] == "disputed", f"Expected status disputed, got {a['status']}"
         caller = str(gl.message.sender_address)
-        assert caller == a["worker_address"], "Only the worker may respond"
+        assert caller.lower() == a["worker_address"].lower(), "Only the worker may respond"
 
         for pkg in json.loads(counter_evidence_json):
             self.evidence_counter = self.evidence_counter + u256(1)
@@ -286,22 +286,35 @@ Return ONLY a JSON object with exactly these fields:
 No markdown, no preamble. JSON only."""
 
         def nondet() -> str:
+            import re
             res = gl.nondet.exec_prompt(prompt)
+            # Strip markdown fences and surrounding whitespace
             res = res.replace("```json", "").replace("```", "").strip()
+            # Extract the first JSON object if the model added extra text
+            match = re.search(r'\{.*\}', res, re.DOTALL)
+            if match:
+                res = match.group()
             dat = json.loads(res)
-            # Return only the consensus-critical fields, sorted for stable comparison
+            # Consensus-critical fields only — categorical values that must agree.
+            # short_reason is intentionally excluded from strict_eq because
+            # free-form text varies between validators even for the same decision.
             return json.dumps({
-                "verdict": dat["verdict"],
-                "payout_action": dat["payout_action"],
+                "verdict": str(dat["verdict"]),
+                "payout_action": str(dat["payout_action"]),
                 "payout_percentage_to_worker": int(dat["payout_percentage_to_worker"]),
-                "confidence_band": dat["confidence_band"],
-                "evidence_strength": dat["evidence_strength"],
+                "confidence_band": str(dat["confidence_band"]),
+                "evidence_strength": str(dat["evidence_strength"]),
                 "revision_recommended": bool(dat["revision_recommended"]),
-                "short_reason": dat.get("short_reason", ""),
             }, sort_keys=True)
 
         result_str = gl.eq_principle.strict_eq(nondet)
         verdict_data = json.loads(result_str)
+
+        # short_reason omitted — a second nondet call outside strict_eq would
+        # produce different text on each validator, making the state write
+        # non-deterministic and causing consensus failure.
+        verdict_data["short_reason"] = ""
+        verdict_data["rendered_at"] = ""
 
         self.verdicts[agreement_id] = json.dumps(verdict_data)
         a["status"] = "resolved"
@@ -329,7 +342,7 @@ No markdown, no preamble. JSON only."""
         a = json.loads(self.agreements[agreement_id])
         assert a["status"] == "resolved", f"Expected status resolved, got {a['status']}"
         caller = str(gl.message.sender_address)
-        assert caller in (a["client_address"], a["worker_address"]), "Only a party may appeal"
+        assert caller.lower() in (a["client_address"].lower(), a["worker_address"].lower()), "Only a party may appeal"
 
         self.appeal_counter = self.appeal_counter + u256(1)
         appeal_id = f"AP-{int(self.appeal_counter):04d}"
@@ -367,6 +380,8 @@ No markdown, no preamble. JSON only."""
 
     @gl.public.view
     def get_verdict(self, agreement_id: str) -> str:
+        if agreement_id not in self.verdicts:
+            return json.dumps(None)
         return self.verdicts[agreement_id]
 
     @gl.public.view

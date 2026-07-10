@@ -48,7 +48,7 @@ const EMPTY: FormData = {
   review_window: '7',
   evidence_rules: '',
   funding_amount: '',
-  currency: 'USDC',
+  currency: 'GEN',
   payout_model: '',
 }
 
@@ -140,7 +140,7 @@ export default function NewAgreementPage() {
         review_window_days: parseInt(data.review_window),
         evidence_rules: data.evidence_rules,
         payout_model: data.payout_model,
-        worker_address: data.worker_address,
+        worker_address: data.worker_address.trim().toLowerCase(),
       })
       router.push('/explorer')
     } catch (e: unknown) {
@@ -316,6 +316,7 @@ export default function NewAgreementPage() {
                   value={data.currency}
                   onChange={(e) => update({ currency: e.target.value })}
                 >
+                  <option>GEN</option>
                   <option>USDC</option>
                   <option>ETH</option>
                   <option>USDT</option>
