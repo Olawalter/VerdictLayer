@@ -6,6 +6,7 @@ import MonoText from './ui/MonoText'
 
 interface CaseFileCardProps {
   agreement: Agreement
+  isDemo?: boolean
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -30,7 +31,7 @@ function formatDate(iso: string) {
   })
 }
 
-export default function CaseFileCard({ agreement }: CaseFileCardProps) {
+export default function CaseFileCard({ agreement, isDemo = false }: CaseFileCardProps) {
   return (
     <Link
       href={`/agreements/${agreement.id}`}
@@ -44,6 +45,11 @@ export default function CaseFileCard({ agreement }: CaseFileCardProps) {
           <span className="text-xs text-[#9AA6B2] uppercase tracking-wider">
             {CATEGORY_LABELS[agreement.work_category] ?? agreement.work_category}
           </span>
+          {isDemo && (
+            <span className="border border-[#F59E0B]/40 bg-[#F59E0B]/5 px-1 py-0.5 font-mono text-[8px] uppercase tracking-widest text-[#F59E0B]">
+              demo
+            </span>
+          )}
         </div>
         <StatusBadge status={agreement.status} size="sm" />
       </div>

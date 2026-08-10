@@ -73,6 +73,8 @@ Standard AI evaluation has a single point of failure: one model, one output, no 
 
 ## Contract
 
+**Live app:** [https://verdict-layer.vercel.app](https://verdict-layer.vercel.app)
+
 **Deployed on GenLayer Studio (studionet)**
 
 ```
@@ -100,6 +102,12 @@ Draft → Funded → Accepted → Submitted ────────────
 
 ---
 
+## Demo Cases
+
+The Case Explorer is pre-seeded with four illustrative cases (VL-0001 to VL-0004) so you can explore the verdict UI without creating agreements first. These are **local fixtures only** — they are not stored on-chain. Any case loaded from the live contract is labelled **LIVE** in the UI; demo cases display a **DEMO** badge.
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -124,6 +132,14 @@ Open [http://localhost:3000](http://localhost:3000).
 ```bash
 npm run build
 npm start
+```
+
+### Run Contract Tests
+
+Smoke-tests the deployed contract's read methods against studionet. No wallet required.
+
+```bash
+npm run test:contract
 ```
 
 ---

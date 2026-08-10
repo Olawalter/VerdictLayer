@@ -50,8 +50,18 @@ export default function CaseDashboard() {
 
   if (!agreement) return notFound()
 
+  const isDemo = !isLive && !!getCaseById(id)
+
   return (
     <div className="min-h-screen bg-[#080A0D]">
+      {/* Demo data banner */}
+      {isDemo && (
+        <div className="border-b border-[#F59E0B]/30 bg-[#F59E0B]/5 px-6 py-2 text-center text-[10px] text-[#F59E0B]">
+          DEMO — This is an illustrative case seeded locally. It is not stored on-chain.{' '}
+          <a href="/agreements/new" className="underline hover:text-[#FBBF24]">Create a real agreement</a>{' '}
+          to use the live protocol.
+        </div>
+      )}
       {/* Status Strip */}
       <div className="border-b border-[#1E2A35] bg-[#11161C] px-6 py-3">
         <div className="mx-auto max-w-7xl flex flex-wrap items-center gap-4">
