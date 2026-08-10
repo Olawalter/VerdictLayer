@@ -209,15 +209,21 @@ class VerdictLayer(gl.Contract):
     @gl.public.write
     def request_verdict(self, agreement_id: str) -> None:
         """
-        Non-deterministic AI adjudication via GenLayer consensus.
-        Each validator runs the LLM independently; eq_principle.strict_eq
-        requires the decision fields to match before the transaction is accepted.
+        AI adjudication using GenLayer's rollup (Optimistic Democracy) consensus.
+
+        Leader: fetches live evidence URLs, runs LLM, proposes a full verdict.
+        Validators: run LLM on base evidence, accept if payout % is within 25pp
+                    of their own independent assessment.
+
+        Using rollup (not strict_eq) because LLM adjudication is inherently
+        subjective — validators need to agree the verdict is *reasonable*,
+        not that they produced byte-identical output.
         """
         a = json.loads(self.agreements[agreement_id])
         assert a["status"] in ("disputed", "response_submitted"), \
             f"Expected disputed or response_submitted, got {a['status']}"
 
-        # Build dispute context
+        # Build dispute context — deterministic, same on all validators
         dispute_statement = ""
         challenged = "[]"
         missing = "[]"
@@ -232,7 +238,7 @@ class VerdictLayer(gl.Contract):
             remedy = d.get("requested_remedy", "")
             severity = d.get("severity", "")
 
-        # Collect evidence
+        # Collect stored evidence — deterministic, same on all validators
         evidence_list = []
         for ev_id in self.evidence_packages:
             ev = json.loads(self.evidence_packages[ev_id])
@@ -241,10 +247,8 @@ class VerdictLayer(gl.Contract):
 
         worker_response = json.dumps(a.get("worker_response") or "No response submitted.")
 
-        prompt = f"""You are a neutral AI adjudicator for a decentralized work agreement protocol.
-Evaluate whether the worker fulfilled their obligations based only on the information below.
-
-=== AGREEMENT ===
+        # Shared agreement block used in both leader and validator prompts
+        agreement_block = f"""=== AGREEMENT ===
 Title: {a['title']}
 Category: {a['work_category']}
 Brief: {a['brief']}
@@ -267,13 +271,9 @@ Requested Remedy: {remedy}
 Severity: {severity}
 
 === WORKER RESPONSE ===
-{worker_response}
+{worker_response}"""
 
-=== EVIDENCE ===
-{json.dumps(evidence_list, indent=2)}
-
-Return ONLY a JSON object with exactly these fields:
-{{
+        json_schema = """{
   "verdict": "<fulfilled|mostly_fulfilled|partially_fulfilled|minor_revision_required|major_revision_required|not_fulfilled|bad_faith_client|bad_faith_worker|insufficient_evidence|out_of_scope_dispute>",
   "payout_action": "<full_release|partial_release|full_refund|partial_refund|hold_pending_revision>",
   "payout_percentage_to_worker": <integer 0-100>,
@@ -281,23 +281,52 @@ Return ONLY a JSON object with exactly these fields:
   "evidence_strength": "<weak|moderate|strong>",
   "revision_recommended": <true|false>,
   "short_reason": "<2-3 sentence explanation>"
-}}
+}"""
+
+        def _parse(text: str) -> dict:
+            import re
+            text = text.replace("```json", "").replace("```", "").strip()
+            m = re.search(r'\{.*\}', text, re.DOTALL)
+            if m:
+                text = m.group()
+            return json.loads(text)
+
+        def leader_fn() -> str:
+            """
+            Leader fetches live content from evidence URLs so the LLM can
+            verify claims against authoritative sources (GitHub PRs, IPFS,
+            hosted files) rather than trusting unverified descriptions alone.
+            """
+            import urllib.request as _req
+
+            enriched = []
+            for ev in evidence_list:
+                url = ev.get("url", "")
+                fetched = ""
+                if url and (url.startswith("http://") or url.startswith("https://")):
+                    try:
+                        with _req.urlopen(url, timeout=10) as resp:
+                            fetched = resp.read(8192).decode("utf-8", errors="replace")[:3000]
+                    except Exception as exc:
+                        fetched = f"[fetch failed: {type(exc).__name__}]"
+                enriched.append({**ev, "fetched_content": fetched})
+
+            prompt = f"""You are a neutral AI adjudicator for a decentralized work agreement protocol.
+Evaluate whether the worker fulfilled their obligations. Evidence URLs have been live-fetched;
+their actual content is included in the fetched_content field — use it to verify claims.
+
+{agreement_block}
+
+=== EVIDENCE (with live-fetched content) ===
+{json.dumps(enriched, indent=2)}
+
+Return ONLY a JSON object:
+{json_schema}
 
 No markdown, no preamble. JSON only."""
 
-        def nondet() -> str:
-            import re
             res = gl.nondet.exec_prompt(prompt)
-            # Strip markdown fences and surrounding whitespace
-            res = res.replace("```json", "").replace("```", "").strip()
-            # Extract the first JSON object if the model added extra text
-            match = re.search(r'\{.*\}', res, re.DOTALL)
-            if match:
-                res = match.group()
-            dat = json.loads(res)
-            # Consensus-critical fields only — categorical values that must agree.
-            # short_reason is intentionally excluded from strict_eq because
-            # free-form text varies between validators even for the same decision.
+            dat = _parse(res)
             return json.dumps({
                 "verdict": str(dat["verdict"]),
                 "payout_action": str(dat["payout_action"]),
@@ -305,15 +334,46 @@ No markdown, no preamble. JSON only."""
                 "confidence_band": str(dat["confidence_band"]),
                 "evidence_strength": str(dat["evidence_strength"]),
                 "revision_recommended": bool(dat["revision_recommended"]),
+                "short_reason": str(dat.get("short_reason", "")),
             }, sort_keys=True)
 
-        result_str = gl.eq_principle.strict_eq(nondet)
-        verdict_data = json.loads(result_str)
+        def validator_fn(leaders_res) -> bool:
+            """
+            Independently evaluate the dispute on base evidence (no URL fetching).
+            Accept the leader's verdict if the proposed payout percentage is within
+            25 percentage points of the validator's own independent assessment.
+            This tolerates LLM subjectivity while catching clearly wrong verdicts.
+            """
+            if not isinstance(leaders_res, gl.vm.Return):
+                return True  # leader errored — defer to network consensus
+            leader = json.loads(leaders_res.calldata)
+            leader_pct = int(leader.get("payout_percentage_to_worker", 50))
 
-        # short_reason omitted — a second nondet call outside strict_eq would
-        # produce different text on each validator, making the state write
-        # non-deterministic and causing consensus failure.
-        verdict_data["short_reason"] = ""
+            prompt = f"""You are a neutral AI adjudicator for a decentralized work agreement protocol.
+Evaluate whether the worker fulfilled their obligations based on the information below.
+
+{agreement_block}
+
+=== EVIDENCE ===
+{json.dumps(evidence_list, indent=2)}
+
+Return ONLY a JSON object:
+{json_schema}
+
+No markdown, no preamble. JSON only."""
+
+            try:
+                res = gl.nondet.exec_prompt(prompt)
+                dat = _parse(res)
+                own_pct = int(dat.get("payout_percentage_to_worker", 50))
+            except Exception:
+                return True  # parse failure → defer to leader
+
+            # Accept if within 25 percentage points
+            return abs(leader_pct - own_pct) <= 25
+
+        result_str = gl.vm.run_nondet(leader_fn, validator_fn)
+        verdict_data = json.loads(result_str)
         verdict_data["rendered_at"] = ""
 
         self.verdicts[agreement_id] = json.dumps(verdict_data)

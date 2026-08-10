@@ -422,7 +422,7 @@ export default function NewAgreementPage() {
               )}
             </button>
             <p className="text-[10px] text-[#9AA6B2] text-center">
-              Sends a transaction to the VerdictLayer contract on GenLayer Testnet Asimov.
+              Sends a transaction to the VerdictLayer contract on GenLayer Studio.
             </p>
           </div>
         )

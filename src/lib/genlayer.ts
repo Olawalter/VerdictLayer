@@ -5,7 +5,7 @@ import { studionet } from 'genlayer-js/chains'
 import { TransactionStatus } from 'genlayer-js/types'
 import type { EIP1193Provider } from './injectedWallets'
 
-export const CONTRACT_ADDRESS = '0xb20520521A383010E73fa69F1de193dF1785326c' as const
+export const CONTRACT_ADDRESS = '0x42248fBa931Fb9e77e491ee03ac5ccC82dBeD6b4' as const
 
 // ---------------------------------------------------------------------------
 // Singleton client — rebuilt when wallet connects / changes account
@@ -45,7 +45,7 @@ function getReadClient() {
 }
 
 // ---------------------------------------------------------------------------
-// Network switch — asks the wallet to move to GenLayer Asimov (chain 4221)
+// Network switch — asks the wallet to move to GenLayer Studio (chain 61999)
 // before sending any write transaction. Adds the network if not present.
 // ---------------------------------------------------------------------------
 
