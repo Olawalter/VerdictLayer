@@ -76,7 +76,7 @@ Standard AI evaluation has a single point of failure: one model, one output, no 
 **Deployed on GenLayer Studio (studionet)**
 
 ```
-Address: 0x5D469e805de2Fe5A6340b4a91dF37eDd9C0114dE
+Address: 0x42248fBa931Fb9e77e491ee03ac5ccC82dBeD6b4
 Network: GenLayer Studio Network
 Chain ID: 61999
 RPC:     https://studio.genlayer.com/api
