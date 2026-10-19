@@ -13,6 +13,8 @@ interface CounterEvidence {
   claimed_relevance: string
   evidence_type: EvidenceType
   description: string
+  content_hash: string
+  inline_content: string
 }
 
 export default function WorkerResponsePage() {
@@ -36,12 +38,20 @@ export default function WorkerResponsePage() {
   async function handleSubmit() {
     setError(null)
     if (!explanation.trim()) { setError('Explanation is required.'); return }
+    const kept = counterEvidence.filter((c) => c.title.trim() || c.url.trim() || c.inline_content.trim())
+    for (const [i, c] of kept.entries()) {
+      if (c.inline_content.trim()) continue
+      if (!/^https?:\/\//.test(c.url.trim()) || !/^[0-9a-f]{64}$/.test(c.content_hash.trim().toLowerCase())) {
+        setError(`Counter-evidence ${i + 1}: provide inline content, or an http(s) URL with the 64-hex sha256 of its content.`)
+        return
+      }
+    }
     setSubmitting(true)
     try {
       await submitResponse({
         agreement_id: id,
         explanation,
-        counter_evidence: counterEvidence.filter((c) => c.title.trim() || c.url.trim()),
+        counter_evidence: kept.map((c) => ({ ...c, url: c.url.trim(), content_hash: c.content_hash.trim().toLowerCase() })),
         revision_offer: revisionOffer,
       })
       router.push(`/agreements/${id}`)
@@ -107,6 +117,16 @@ export default function WorkerResponsePage() {
                         onChange={(e) => updateCE(i, { url: e.target.value })} />
                     </div>
                     <div>
+                      <label className={labelClass}>SHA-256 of content at URL</label>
+                      <input className={fieldClass} placeholder="64 hex characters" value={ce.content_hash}
+                        onChange={(e) => updateCE(i, { content_hash: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Or inline content (hashed on-chain)</label>
+                      <textarea className={`${fieldClass} min-h-16 resize-none`} value={ce.inline_content}
+                        onChange={(e) => updateCE(i, { inline_content: e.target.value })} />
+                    </div>
+                    <div>
                       <label className={labelClass}>Description</label>
                       <input className={fieldClass} value={ce.description}
                         onChange={(e) => updateCE(i, { description: e.target.value })} />
@@ -121,7 +141,7 @@ export default function WorkerResponsePage() {
               ))}
             </div>
             <button
-              onClick={() => setCounterEvidence((e) => [...e, { title: '', url: '', claimed_relevance: '', description: '', evidence_type: EvidenceType.Link }])}
+              onClick={() => setCounterEvidence((e) => [...e, { title: '', url: '', claimed_relevance: '', description: '', content_hash: '', inline_content: '', evidence_type: EvidenceType.Link }])}
               className="mt-3 flex items-center gap-1.5 text-xs text-[#3B82F6] hover:text-[#60A5FA]">
               <Plus className="h-3 w-3" /> Add counter-evidence
             </button>

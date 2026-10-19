@@ -9,7 +9,11 @@
 import { createClient } from 'genlayer-js'
 import { studionet } from 'genlayer-js/chains'
 
-const CONTRACT_ADDRESS = '0x42248fBa931Fb9e77e491ee03ac5ccC82dBeD6b4'
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VERDICTLAYER_ADDRESS
+if (!CONTRACT_ADDRESS) {
+  console.error('Set NEXT_PUBLIC_VERDICTLAYER_ADDRESS to the deployed (escrow-backed) contract address.')
+  process.exit(2)
+}
 
 const client = createClient({ chain: studionet })
 
@@ -75,52 +79,44 @@ await test('get_agreement() returns valid JSON for each listed id', async () => 
     const data = JSON.parse(raw)
     assert(data.id === id, `id mismatch: got ${data.id}`)
     assert(['draft','funded','accepted','submitted','disputed',
-            'response_submitted','resolved','finalized','appealed']
+            'response_submitted','resolved','appealed','settlement_pending','settled','cancelled']
             .includes(data.status), `unexpected status: ${data.status}`)
+    assert(/^[0-9a-f]{64}$/.test(data.terms_hash), 'missing frozen terms_hash')
+    assert(BigInt(data.reward_deposited) <= BigInt(data.required_reward), 'deposit exceeds required reward')
+    if (['draft', 'cancelled'].includes(data.status)) {
+      assert(data.reward_deposited === '0', `${id}: ${data.status} agreement holds a deposit`)
+    }
     assert(typeof data.client_address === 'string', 'missing client_address')
     assert(typeof data.worker_address === 'string', 'missing worker_address')
   }
 })
 
-// 4. get_verdict() returns null JSON for agreements without a verdict
-await test('get_verdict() returns null for non-resolved agreements', async () => {
-  const unresolvedIds = agreements
-    .filter((a) => !['resolved', 'finalized'].includes(a.status))
-    .map((a) => a.id)
-  for (const id of unresolvedIds) {
-    const raw = await read('get_verdict', [id])
-    const v = JSON.parse(raw)
-    assert(v === null, `expected null verdict for ${id}, got ${JSON.stringify(v)}`)
+// 4. get_verdict() is null until an agreement has been adjudicated
+await test('get_verdict() returns null before adjudication', async () => {
+  const pre = ['draft', 'funded', 'accepted', 'submitted', 'disputed', 'response_submitted', 'cancelled']
+  for (const a of agreements.filter((x) => pre.includes(x.status))) {
+    const v = JSON.parse(await read('get_verdict', [a.id]))
+    assert(v === null, `expected null verdict for ${a.id}, got ${JSON.stringify(v)}`)
   }
 })
 
-// 5. get_verdict() returns a valid verdict object for resolved agreements
-await test('get_verdict() returns valid verdict for resolved/finalized agreements', async () => {
-  const resolvedIds = agreements
-    .filter((a) => ['resolved', 'finalized'].includes(a.status))
-    .map((a) => a.id)
-  if (resolvedIds.length === 0) {
-    console.log('       (no resolved agreements yet — skipping verdict field check)')
-    return
+// 5. consensus verdicts carry their evidence-snapshot provenance and a band-valid payout
+await test('consensus verdicts bind to the frozen terms and an evidence snapshot', async () => {
+  for (const a of agreements.filter((x) => ['resolved', 'settlement_pending', 'settled'].includes(x.status))) {
+    const full = JSON.parse(await read('get_agreement', [a.id]))
+    const v = JSON.parse(await read('get_verdict', [a.id]))
+    if (v === null) continue // approval / lapse / mutual settlement resolve without adjudication
+    assert(v.terms_hash === full.terms_hash, `${a.id}: verdict not bound to frozen terms`)
+    assert(/^[0-9a-f]{64}$/.test(v.snapshot), `${a.id}: missing evidence snapshot digest`)
+    assert(Number.isInteger(v.payout_bps_to_worker) && v.payout_bps_to_worker >= 0 && v.payout_bps_to_worker <= 10000,
+      `${a.id}: payout bps out of range`)
   }
-  const validVerdicts = [
-    'fulfilled','mostly_fulfilled','partially_fulfilled',
-    'minor_revision_required','major_revision_required','not_fulfilled',
-    'bad_faith_client','bad_faith_worker','insufficient_evidence','out_of_scope_dispute',
-  ]
-  const validActions = [
-    'full_release','partial_release','full_refund','partial_refund','hold_pending_revision',
-  ]
-  for (const id of resolvedIds) {
-    const raw = await read('get_verdict', [id])
-    const v = JSON.parse(raw)
-    assert(v !== null, `null verdict for resolved agreement ${id}`)
-    assert(validVerdicts.includes(v.verdict), `unexpected verdict type: ${v.verdict}`)
-    assert(validActions.includes(v.payout_action), `unexpected payout_action: ${v.payout_action}`)
-    assert(Number.isInteger(v.payout_percentage_to_worker), 'payout_percentage_to_worker not integer')
-    assert(v.payout_percentage_to_worker >= 0 && v.payout_percentage_to_worker <= 100,
-      `payout out of range: ${v.payout_percentage_to_worker}`)
-  }
+})
+
+// 5b. custody is solvent: real balance covers every outstanding liability
+await test('get_custody() reports a solvent contract', async () => {
+  const c = JSON.parse(await read('get_custody'))
+  assert(BigInt(c.balance) >= BigInt(c.held_total), `balance ${c.balance} < held ${c.held_total}`)
 })
 
 // 6. get_evidence() returns an array for any listed agreement

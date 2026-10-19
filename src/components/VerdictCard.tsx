@@ -137,7 +137,28 @@ export default function VerdictCard({ verdict, compact = false }: VerdictCardPro
         <p className="text-sm text-[#F4F7FA] leading-relaxed">{verdict.short_reason}</p>
       </div>
 
+      {/* Authenticated-evidence provenance (live, consensus-backed verdicts) */}
+      {verdict.verified_ids && (
+        <div className="mb-3 grid grid-cols-3 gap-3">
+          <div className="border border-[#1E2A35] bg-[#080A0D] p-2.5">
+            <div className="text-[9px] uppercase tracking-widest text-[#9AA6B2] mb-1">Authenticated</div>
+            <div className="font-mono text-xs text-[#22C55E]">{verdict.verified_ids.length} item(s)</div>
+          </div>
+          <div className="border border-[#1E2A35] bg-[#080A0D] p-2.5">
+            <div className="text-[9px] uppercase tracking-widest text-[#9AA6B2] mb-1">Excluded</div>
+            <div className="font-mono text-xs" style={{ color: (verdict.unverified?.length ?? 0) > 0 ? '#EF4444' : '#9AA6B2' }}>
+              {verdict.unverified?.length ?? 0} item(s)
+              {verdict.unverified?.map((u) => ` ${u.evidence_id}:${u.reason}`).join('')}
+            </div>
+          </div>
+          <div className="border border-[#1E2A35] bg-[#080A0D] p-2.5">
+            <div className="text-[9px] uppercase tracking-widest text-[#9AA6B2] mb-1">Snapshot</div>
+            <div className="font-mono text-xs text-[#9AA6B2] break-all">{verdict.snapshot?.slice(0, 16)}…</div>
+          </div>
+        </div>
+      )}
       {/* Metadata grid */}
+      {verdict.confidence_band && (
       <div className="grid grid-cols-3 gap-3">
         <div className="border border-[#1E2A35] bg-[#080A0D] p-2.5">
           <div className="text-[9px] uppercase tracking-widest text-[#9AA6B2] mb-1">
@@ -187,6 +208,7 @@ export default function VerdictCard({ verdict, compact = false }: VerdictCardPro
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

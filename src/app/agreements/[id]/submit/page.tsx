@@ -13,6 +13,7 @@ interface EvidencePkg {
   description: string
   url: string
   content_hash: string
+  inline_content: string
   claimed_relevance: string
 }
 
@@ -22,8 +23,11 @@ const EMPTY_PKG: EvidencePkg = {
   description: '',
   url: '',
   content_hash: '',
+  inline_content: '',
   claimed_relevance: '',
 }
+
+const SHA256_HEX = /^[0-9a-f]{64}$/
 
 export default function SubmitDeliverablesPage() {
   const params = useParams()
@@ -45,9 +49,24 @@ export default function SubmitDeliverablesPage() {
     setError(null)
     setSubmitting(true)
     try {
-      const filtered = packages.filter((p) => p.title.trim() || p.url.trim())
+      const filtered = packages.filter((p) => p.title.trim() || p.url.trim() || p.inline_content.trim())
       if (filtered.length === 0) throw new Error('Add at least one evidence package.')
-      await submitDeliverables(id, filtered)
+      for (const [i, p] of filtered.entries()) {
+        // The contract refuses evidence it cannot later authenticate.
+        if (!p.inline_content.trim()) {
+          if (!/^https?:\/\//.test(p.url.trim())) throw new Error(`Package ${i + 1}: provide an http(s) URL or inline content.`)
+          if (!SHA256_HEX.test(p.content_hash.trim().toLowerCase()))
+            throw new Error(`Package ${i + 1}: a URL needs the 64-character sha256 hex digest of the exact bytes served at it.`)
+        }
+      }
+      await submitDeliverables(
+        id,
+        filtered.map((p) => ({
+          ...p,
+          url: p.url.trim(),
+          content_hash: p.content_hash.trim().toLowerCase(),
+        }))
+      )
       router.push(`/agreements/${id}`)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Transaction failed')
@@ -114,9 +133,19 @@ export default function SubmitDeliverablesPage() {
                     value={pkg.claimed_relevance} onChange={(e) => updatePkg(i, { claimed_relevance: e.target.value })} />
                 </div>
                 <div>
-                  <label className={labelClass}>Content Hash (optional)</label>
-                  <input className={fieldClass} placeholder="sha256:..."
+                  <label className={labelClass}>SHA-256 of the content at the URL (required for URLs)</label>
+                  <input className={fieldClass} placeholder="64 hex characters, e.g. from `sha256sum file`"
                     value={pkg.content_hash} onChange={(e) => updatePkg(i, { content_hash: e.target.value })} />
+                  <p className="mt-1 text-[10px] text-[#9AA6B2]">
+                    Validators re-fetch the URL and re-hash it. If the bytes differ from this digest the item is excluded from
+                    adjudication, so pin the exact version you are submitting.
+                  </p>
+                </div>
+                <div>
+                  <label className={labelClass}>Or inline content (hashed on-chain)</label>
+                  <textarea className={`${fieldClass} min-h-20 resize-none`}
+                    placeholder="Paste text evidence directly instead of a URL (max ~64 KB)"
+                    value={pkg.inline_content} onChange={(e) => updatePkg(i, { inline_content: e.target.value })} />
                 </div>
               </div>
             </div>

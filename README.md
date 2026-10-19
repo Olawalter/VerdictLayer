@@ -73,32 +73,50 @@ Standard AI evaluation has a single point of failure: one model, one output, no 
 
 ## Contract
 
-**Live app:** [https://verdict-layer.vercel.app](https://verdict-layer.vercel.app)
+`contract/verdict_layer.py` — a GenLayer Intelligent Contract (runner pinned in its `# Depends` header).
 
-**Deployed on GenLayer Studio (studionet)**
+**Deployment:** deployed on studionet at `0xD6d60c1dB4064b9EdD7fb70dc893d5B1c0284c2B` (see REPLY.md). Deploy it with
+`PRIVATE_KEY=0x… node scripts/deploy.mjs` and set `NEXT_PUBLIC_VERDICTLAYER_ADDRESS` (see *Environment*). The earlier
+studionet deployment (`0x42248f…D6b4`) predates the custody/settlement implementation, has no payable methods and must not
+be used with this code.
 
 ```
-Address: 0x42248fBa931Fb9e77e491ee03ac5ccC82dBeD6b4
-Network: GenLayer Studio Network
-Chain ID: 61999
+Network: GenLayer Studio Network   Chain ID: 61999
 RPC:     https://studio.genlayer.com/api
-Explorer: https://genlayer-explorer.vercel.app
 ```
 
----
+### Custody and settlement
+
+- `fund_agreement` and `appeal_verdict` are **payable**. The ledger (`reward_deposited`, `bond_deposited`) is written from
+  `gl.message.value`, never from an argument, and the value must equal the amount frozen in the agreement terms.
+- `settle` is the only path that releases funds. It zeroes the ledger, then emits native GEN transfers with the EVM-style
+  plain send `emit_transfer(..., on="finalized")` (`_pay`; it credits ordinary accounts, verified with `eth_getBalance`), so they only leave once the settling transaction finalizes.
+- A queued payout is `settlement_pending`, **not** settled. `confirm_settlements` marks agreements `settled` only when the
+  contract's real balance is no more than the funds it still holds, i.e. the transfers have actually left.
+- `get_custody` exposes the real balance next to internal liabilities.
+
+### Authenticated evidence and validator verification
+
+- Every evidence item is bound to a sha256 digest at submission (supplied for URLs, computed on-chain for inline content).
+- `request_verdict`: the leader **and every validator** re-fetch each URL, re-hash the bytes and exclude anything that does not
+  match its committed digest, then judge the surviving evidence against the frozen terms (`terms_hash`).
+- A validator agrees only if its authenticated snapshot is identical to the leader's, the verdict label's payout band holds,
+  and its own independent payout is within 15 percentage points. A leader error is never auto-approved.
+- If no evidence authenticates, the verdict is `insufficient_evidence` and the pre-agreed `inconclusive_worker_bps` split applies.
 
 ## Agreement Lifecycle
 
 ```
-Draft → Funded → Accepted → Submitted ──────────────────────────────────► Finalized
-                                      ↘ Disputed → ResponseSubmitted → Resolved → Finalized
+draft → funded → accepted → submitted ─(approve / review window lapses)─► resolved ─► settlement_pending ─► settled
+                                │                                            ▲
+                                └► disputed → response_submitted → (request_verdict) ─┘   (resolved may be appealed once, if a bond was frozen)
+cancelled / declined / expired / mutual settlement also resolve → settle() → settlement_pending → settled
 ```
 
-**Verdict types** span the full spectrum:
-`fulfilled` · `mostly_fulfilled` · `partially_fulfilled` · `minor_revision_required` · `major_revision_required` · `not_fulfilled` · `bad_faith_client` · `bad_faith_worker` · `insufficient_evidence`
-
-**Payout actions:**
-`full_release` · `partial_release` · `full_refund` · `partial_refund` · `hold_pending_revision` · `escrow_hold`
+**Verdict types and payout bands** (share of the *deposited* reward owed to the worker):
+`fulfilled` 100% · `mostly_fulfilled` 70–95% · `partially_fulfilled` 20–70% · `minor_revision_required` 40–80% ·
+`major_revision_required` 5–40% · `not_fulfilled` 0% · `bad_faith_client` 100% · `bad_faith_worker` 0% ·
+`out_of_scope_dispute` 100% · `insufficient_evidence` = frozen `inconclusive_worker_bps`.
 
 ---
 
@@ -136,10 +154,20 @@ npm start
 
 ### Run Contract Tests
 
-Smoke-tests the deployed contract's read methods against studionet. No wallet required.
+Python tooling lives in a virtualenv (Python 3.12+; on Windows run the direct tests under WSL/Linux — the direct-test
+harness cannot delete its temp file on Windows):
 
 ```bash
-npm run test:contract
+pip install -r requirements.txt
+genvm-lint check contract/verdict_layer.py --json
+pytest tests/direct/ -v                  # in-process: custody, evidence, validators, settlement
+gltest tests/integration/ -v -s          # needs a running GenLayer Studio + LLM provider
+```
+
+Read-only smoke test of a deployed contract (no wallet):
+
+```bash
+NEXT_PUBLIC_VERDICTLAYER_ADDRESS=0x… npm run test:contract
 ```
 
 ---
@@ -210,13 +238,14 @@ Complete manual test using two wallets (Client and Worker):
 **Steps**
 
 1. **Create Agreement** (Client) — `/agreements/new` — fill title, brief, deliverables, criteria, set Worker to Wallet B address, submit on-chain.
-2. **Fund** (Client) — case dashboard → enter amount + currency → "Fund Agreement".
+2. **Fund** (Client) — case dashboard → "Fund N GEN". The wallet sends exactly the frozen escrow amount; the contract rejects any other value.
 3. **Accept** (Worker) — switch to Wallet B → "Accept Agreement".
-4. **Submit Deliverables** (Worker) — `/agreements/[id]/submit` — add at least one package with title, URL, evidence type.
+4. **Submit Deliverables** (Worker) — `/agreements/[id]/submit` — add a package with either inline content, or a URL plus the sha256 hex of the exact bytes at that URL (`sha256sum file`).
 5. **Open Dispute** (Client) — switch to Wallet A → "Open Dispute" → fill statement + challenged deliverables.
 6. **File Response** (Worker) — switch to Wallet B → "File Response" → explanation + optional counter-evidence.
 7. **Request Verdict** — "Request Verdict" → GenLayer validators evaluate the dispute → redirects to verdict page.
-8. **Apply Settlement** — "Apply Settlement" → executes payout from escrow.
+8. **Settle** — anyone → "Settle". If a bond was frozen the verdict is appealable for 24 h first. This queues finalized GEN transfers to the worker/client and shows `settlement_pending`.
+9. **Confirm** — after the settle transaction finalizes, "Confirm Delivery" marks `settled` only if the contract balance proves the funds left. A second `settle` is rejected.
 
 Each write transaction is submitted to studionet and polled until `FINALIZED` (status code 7). The UI retries reading the updated state automatically after each action.
 
@@ -224,7 +253,10 @@ Each write transaction is submitted to studionet and polled until `FINALIZED` (s
 
 ## Environment
 
-No environment variables are required. The contract address and RPC endpoint are set in `src/lib/genlayer.ts`. To point to a different deployment, update `CONTRACT_ADDRESS` in that file.
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_VERDICTLAYER_ADDRESS` | Address of the deployed escrow-backed contract (required; there is deliberately no fallback). |
+| `PRIVATE_KEY` | Deployer key for `scripts/deploy.mjs` only. |
 
 ---
 

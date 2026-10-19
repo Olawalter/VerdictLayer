@@ -33,6 +33,8 @@ interface FormData {
   review_window: string
   evidence_rules: string
   funding_amount: string
+  appeal_bond: string
+  inconclusive_pct: string
   currency: string
   payout_model: string
 }
@@ -48,6 +50,8 @@ const EMPTY: FormData = {
   review_window: '7',
   evidence_rules: '',
   funding_amount: '',
+  appeal_bond: '0',
+  inconclusive_pct: '0',
   currency: 'GEN',
   payout_model: '',
 }
@@ -141,6 +145,9 @@ export default function NewAgreementPage() {
         evidence_rules: data.evidence_rules,
         payout_model: data.payout_model,
         worker_address: data.worker_address.trim().toLowerCase(),
+        required_reward_gen: data.funding_amount,
+        appeal_bond_gen: data.appeal_bond || '0',
+        inconclusive_worker_bps: Math.round(parseFloat(data.inconclusive_pct || '0') * 100),
       })
       router.push('/explorer')
     } catch (e: unknown) {
@@ -300,29 +307,50 @@ export default function NewAgreementPage() {
         return (
           <div className="space-y-4">
             <div>
-              <label className={labelClass}>Funding Amount</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className={`${fieldClass} flex-1`}
-                  placeholder="0.00"
-                  value={data.funding_amount}
-                  onChange={(e) => update({ funding_amount: e.target.value })}
-                />
-                <select
-                  className="border border-[#1E2A35] bg-[#080A0D] px-3 py-2 text-sm text-[#F4F7FA] focus:outline-none"
-                  value={data.currency}
-                  onChange={(e) => update({ currency: e.target.value })}
-                >
-                  <option>GEN</option>
-                  <option>USDC</option>
-                  <option>ETH</option>
-                  <option>USDT</option>
-                  <option>DAI</option>
-                </select>
-              </div>
+              <label className={labelClass}>Escrow Amount (GEN)</label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                className={fieldClass}
+                placeholder="0.00"
+                value={data.funding_amount}
+                onChange={(e) => update({ funding_amount: e.target.value })}
+              />
+              <p className="mt-1.5 text-[10px] text-[#9AA6B2]">
+                Native GEN only. This is the exact amount you must deposit; the contract rejects any other value and
+                only treats the agreement as funded once the GEN is actually received.
+              </p>
+            </div>
+            <div>
+              <label className={labelClass}>Appeal Bond (GEN, 0 disables appeals)</label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                className={fieldClass}
+                value={data.appeal_bond}
+                onChange={(e) => update({ appeal_bond: e.target.value })}
+              />
+              <p className="mt-1.5 text-[10px] text-[#9AA6B2]">
+                One appeal per agreement. Returned to the appellant if re-adjudication changes the payout; otherwise
+                awarded to the counterparty.
+              </p>
+            </div>
+            <div>
+              <label className={labelClass}>Worker Share If Evidence Cannot Be Authenticated (%)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                className={fieldClass}
+                value={data.inconclusive_pct}
+                onChange={(e) => update({ inconclusive_pct: e.target.value })}
+              />
+              <p className="mt-1.5 text-[10px] text-[#9AA6B2]">
+                Frozen now. Applies when no submitted evidence matches its committed hash, so no winner is invented.
+              </p>
             </div>
           </div>
         )
@@ -385,7 +413,9 @@ export default function NewAgreementPage() {
                   ['Title', data.title],
                   ['Category', data.work_category],
                   ['Worker', data.worker_address],
-                  ['Escrow', `${data.funding_amount} ${data.currency}`],
+                  ['Escrow', `${data.funding_amount} GEN`],
+                  ['Appeal Bond', `${data.appeal_bond || '0'} GEN`],
+                  ['Inconclusive Split', `${data.inconclusive_pct || '0'}% to worker`],
                   ['Deadline', data.deadline],
                   ['Review Window', `${data.review_window} days`],
                   ['Payout Model', data.payout_model],

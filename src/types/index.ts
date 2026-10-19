@@ -8,8 +8,10 @@ export enum AgreementStatus {
   Disputed = 'disputed',
   ResponseSubmitted = 'response_submitted',
   Resolved = 'resolved',
-  Finalized = 'finalized',
   Appealed = 'appealed',
+  SettlementPending = 'settlement_pending',
+  Settled = 'settled',
+  Cancelled = 'cancelled',
 }
 
 export enum VerdictType {
@@ -97,11 +99,18 @@ export interface Verdict {
   verdict: VerdictType
   payout_action: PayoutAction
   payout_percentage_to_worker: number
-  confidence_band: 'low' | 'medium' | 'high'
-  evidence_strength: 'weak' | 'moderate' | 'strong'
-  revision_recommended: boolean
+  confidence_band?: 'low' | 'medium' | 'high'
+  evidence_strength?: 'weak' | 'moderate' | 'strong'
+  revision_recommended?: boolean
   short_reason: string
   rendered_at: string
+  // on-chain adjudication provenance (live agreements)
+  payout_bps_to_worker?: number
+  terms_hash?: string
+  snapshot?: string
+  verified_ids?: string[]
+  unverified?: { evidence_id: string; reason: string }[]
+  criteria_findings?: string[]
 }
 
 export interface Appeal {
@@ -119,6 +128,7 @@ export interface Settlement {
   client_amount: number
   currency: string
   applied_at: string
+  state?: string
 }
 
 export interface Agreement {
@@ -147,6 +157,16 @@ export interface Agreement {
   active_dispute_id?: string
   active_appeal_id?: string
   settlement?: Settlement
+  // custody + frozen terms (live agreements; amounts are wei as decimal strings)
+  terms_hash?: string
+  required_reward?: string
+  reward_deposited?: string
+  appeal_bond?: string
+  bond_deposited?: string
+  inconclusive_worker_bps?: number
+  appealable?: boolean
+  resolved_at?: number
+  verdict_source?: string
   // enriched client-side
   evidence?: Evidence[]
   dispute?: Dispute

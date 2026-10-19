@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
-import { appealVerdict } from '@/lib/genlayer'
+import { appealVerdict, getAgreement, weiToGen } from '@/lib/genlayer'
 
 export default function AppealPage() {
   const params = useParams()
@@ -12,9 +12,16 @@ export default function AppealPage() {
   const router = useRouter()
 
   const [grounds, setGrounds] = useState('')
-  const [bondAmount, setBondAmount] = useState('50')
+  const [bondWei, setBondWei] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // The bond is fixed by the agreement's frozen terms; the contract rejects any other value.
+  useEffect(() => {
+    getAgreement(id)
+      .then((a) => setBondWei(a.appeal_bond ?? '0'))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Could not load agreement'))
+  }, [id])
 
   const fieldClass =
     'w-full border border-[#1E2A35] bg-[#080A0D] px-3 py-2 text-sm text-[#F4F7FA] placeholder:text-[#9AA6B2] focus:border-[#EF4444]/60 focus:outline-none'
@@ -23,11 +30,10 @@ export default function AppealPage() {
   async function handleSubmit() {
     setError(null)
     if (!grounds.trim()) { setError('Grounds for appeal are required.'); return }
-    const bond = parseFloat(bondAmount)
-    if (!bond || bond <= 0) { setError('Bond amount must be greater than 0.'); return }
+    if (bondWei === null || bondWei === '0') { setError('Appeals are not enabled for this agreement.'); return }
     setSubmitting(true)
     try {
-      await appealVerdict(id, grounds, bond)
+      await appealVerdict(id, grounds, bondWei)
       router.push(`/agreements/${id}`)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Transaction failed')
@@ -57,7 +63,8 @@ export default function AppealPage() {
 
         <div className="mb-8 border border-[#EF4444]/20 bg-[#EF4444]/5 px-4 py-3">
           <p className="text-xs text-[#EF4444] leading-relaxed">
-            Appeals trigger a secondary validator round. The bond is forfeited if the appeal is rejected.
+            Appeals trigger one more validator round over the same authenticated evidence. The bond is returned if the
+            payout changes and awarded to the counterparty if it does not.
             Only file if you have substantive grounds — procedural errors, new material evidence, or
             clear bias in the original verdict.
           </p>
@@ -75,17 +82,14 @@ export default function AppealPage() {
           </div>
 
           <div>
-            <label className={labelClass}>Bond Amount (GEN)</label>
+            <label className={labelClass}>Appeal Bond (fixed by agreement terms)</label>
             <p className="text-[10px] text-[#9AA6B2] mb-1.5">
-              Forfeited if the appeal is rejected. Returned if accepted.
+              Sent as native GEN with the transaction and held in contract custody.
             </p>
             <input
-              type="number"
-              min="1"
-              step="1"
               className={fieldClass}
-              value={bondAmount}
-              onChange={(e) => setBondAmount(e.target.value)}
+              readOnly
+              value={bondWei === null ? 'Loading…' : `${weiToGen(bondWei)} GEN`}
             />
           </div>
         </div>

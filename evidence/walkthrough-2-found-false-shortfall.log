@@ -1,0 +1,28 @@
+[client] create_agreement tx=0x230a1530f759979312f432e050b268e476f36faf7fae4419f63b16137fa1d1ae status=ACCEPTED
+   state after create: status=draft reward_deposited=0 custody= {"balance": "0", "held_total": "0", "pending_total": "0", "credit_total": "0", "solvent": true}
+[client] fund_agreement tx=0x82541dab478028a6b87784515bf36f8e992a0f4338a4d5a8cfc6cb8b145c1e92 status=ACCEPTED
+   wrong-value fund tx status (expect not FINALIZED/ACCEPTED success): ACCEPTED
+   state after wrong-value fund attempt: status=draft reward_deposited=0 custody= {"balance": "999999999999999", "held_total": "0", "pending_total": "0", "credit_total": "999999999999999", "solvent": true}
+[client] withdraw_credit tx=0xbc2dc25d5f9677d56d943a03e65827c55f3c3b4e5472ded532e2aa92f871e166 status=ACCEPTED
+   state after withdraw_credit (refused deposit returned): status=draft reward_deposited=0 custody= {"balance": "999999999999999", "held_total": "0", "pending_total": "999999999999999", "credit_total": "0", "solvent": true}
+[client] confirm_settlements tx=0xca43973f5c7a28414938228a7f6ac09935a43c18c3e8443db0dd71fe09bdad68 status=ACCEPTED
+   state after confirm credit withdrawal: status=draft reward_deposited=0 custody= {"balance": "999999999999999", "held_total": "0", "pending_total": "999999999999999", "credit_total": "0", "solvent": true}
+[client] fund_agreement tx=0x6d3d49249b9df444e70ade943682173044bd1119c2674b4307c66da345810fc3 status=ACCEPTED
+   state after exact funding: status=funded reward_deposited=1000000000000000 custody= {"balance": "1999999999999999", "held_total": "1000000000000000", "pending_total": "999999999999999", "credit_total": "0", "solvent": true}
+[worker] accept_agreement tx=0x69d6b7cb34d4c3e7a98122d63fdea5ad273389cd777f8fb12bd63cdbaafc06f1 status=ACCEPTED
+[worker] submit_deliverables tx=0xc94a3d5ce01d52e989ff50d81f288cb308136b3baa819911c1ea088e224370df status=ACCEPTED
+   evidence sha256 expected: 57630988a2cfbe5f4dd1d9b39a07d9a286db612c5e72e8c9535020a27b56a9d6
+   stored evidence: [{"evidence_id": "EV-0001", "agreement_id": "VL-0001", "submitted_by": "0x9634e3907b37ac293e53867CDd2f5891146d7a42", "evidence_type": "document", "title": "Page copy", "description": "", "url": "", "content_hash": "57630988a2cfbe5f4dd1d9b39a07d9a286db612c5e72e8c9535020a27b56a9d6", "inline_content": "Landing page shipped: hero, features, pricing sections; responsive; WCAG AA contrast verified.", "submitted_at": "2026-10-19T00:01:41.618821Z", "source_label": "worker", "claimed_relevance": "all criteria"}]
+[client] open_dispute tx=0xec33ffbddf740ee56f3ce9f43609ba6681f3cc85bb86f2cc27ec97792d1b09b0 status=ACCEPTED
+[client] request_verdict tx=0xf266435c406cf36382da2b1d5a8ba9591c766f2869c2d12d2728af4816d58258 status=ACCEPTED
+   state after request_verdict: status=resolved reward_deposited=1000000000000000 custody= {"balance": "1000000000000000", "held_total": "1000000000000000", "pending_total": "999999999999999", "credit_total": "0", "solvent": true}
+   verdict: {"adjudicated_at": "2026-10-19T00:01:56.551709Z", "criteria_findings": ["met", "met", "met"], "payout_bps_to_worker": 10000, "short_reason": "The worker provided authenticated evidence asserting that all three required sections (hero, features, pricing) were delivered, along with responsiveness and WCAG AA compliance. The client's dispute statement is a bare assertion with no authenticated evidence to contradict the worker's submission.", "snapshot": "dbc8427eea488b22ecd72c021b88fdff112d16af6f846de8b8a33b64ad76328b", "terms_hash": "9d2701ecf5a0c4e7fe172bfe10be79bef8c3b186aaaef545839cb609d10412ae", "unverified": [], "verdict": "fulfilled", "verified_ids": ["EV-0001"]}
+[client] settle tx=0xc658324a584cec5f076f23f27e9b931a2675bf5ebea002396baff43ed7ac1d4c status=ACCEPTED
+   state after settle: status=resolved reward_deposited=1000000000000000 custody= {"balance": "1000000000000000", "held_total": "1000000000000000", "pending_total": "999999999999999", "credit_total": "0", "solvent": true}
+[client] settle tx=0x9a70e5ecd7cecf87fd9f9a301d72d52f01772359eee853f5fe16a1e73ef4bd36 status=ACCEPTED
+   second settle status: ACCEPTED
+[client] confirm_settlements tx=0x1cc6e1115356067fb50fe63e8cb233aee1d0c28f91e752ba64d4f25c96e6ceb5 status=ACCEPTED
+   state after confirm_settlements: status=resolved reward_deposited=1000000000000000 custody= {"balance": "1000000000000000", "held_total": "1000000000000000", "pending_total": "0", "credit_total": "0", "solvent": true}
+   settlement: null
+   client balance: 0
+   worker balance: 0

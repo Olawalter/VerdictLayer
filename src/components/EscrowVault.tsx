@@ -18,9 +18,13 @@ function getEscrowState(status: AgreementStatus) {
     case AgreementStatus.ResponseSubmitted:
       return { label: 'Disputed Hold', icon: 'alert', color: '#EF4444', desc: 'Release blocked pending verdict' }
     case AgreementStatus.Resolved:
-      return { label: 'Verdict Rendered', icon: 'lock', color: '#8B5CF6', desc: 'Awaiting settlement application' }
-    case AgreementStatus.Finalized:
-      return { label: 'Settled', icon: 'unlock', color: '#22C55E', desc: 'Funds distributed' }
+      return { label: 'Verdict Rendered', icon: 'lock', color: '#8B5CF6', desc: 'Funds still held — awaiting settle()' }
+    case AgreementStatus.SettlementPending:
+      return { label: 'Transfers Queued', icon: 'lock', color: '#F59E0B', desc: 'Emitted on finalization; not yet confirmed delivered' }
+    case AgreementStatus.Settled:
+      return { label: 'Settled', icon: 'unlock', color: '#22C55E', desc: 'Contract balance confirms funds left custody' }
+    case AgreementStatus.Cancelled:
+      return { label: 'Cancelled', icon: 'unlock', color: '#9AA6B2', desc: 'No funds were deposited' }
     case AgreementStatus.Appealed:
       return { label: 'Appeal Hold', icon: 'alert', color: '#EF4444', desc: 'Funds held during appeal' }
     default:

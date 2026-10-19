@@ -1,0 +1,24 @@
+[client] create_agreement tx=0x330aa0238ec3fbc4c862c87320320d415d2c4898a4517d93aa2bc8ab104d0f04 status=ACCEPTED
+   state after create: status=draft reward_deposited=0 custody= {"balance": "0", "held_total": "0", "pending_total": "0", "solvent": true}
+[client] fund_agreement tx=0x5a25d844a1791c90f46d2ab1ea4b664c9c5b1844085bf71a6a333e9d7606a87a status=ACCEPTED
+   wrong-value fund tx status (expect not FINALIZED/ACCEPTED success): ACCEPTED
+   state after wrong-value fund attempt: status=draft reward_deposited=0 custody= {"balance": "999999999999999", "held_total": "0", "pending_total": "0", "solvent": true}
+[client] fund_agreement tx=0xb48729cd189e0071eb353124dc76bdecd14de421f1c76067b9032fd19b9683ce status=ACCEPTED
+   state after exact funding: status=funded reward_deposited=1000000000000000 custody= {"balance": "1999999999999999", "held_total": "1000000000000000", "pending_total": "0", "solvent": true}
+[worker] accept_agreement tx=0xee0171cca71449a70b00e50dd4381d2616fedda758df6e4fe57c6b1637172758 status=ACCEPTED
+[worker] submit_deliverables tx=0x47635b66751e556865165ff8e01e36c8b9c9fd7e0923049e56b20012b1ce73b0 status=ACCEPTED
+   evidence sha256 expected: 57630988a2cfbe5f4dd1d9b39a07d9a286db612c5e72e8c9535020a27b56a9d6
+   stored evidence: [{"evidence_id": "EV-0001", "agreement_id": "VL-0001", "submitted_by": "0x9634e3907b37ac293e53867CDd2f5891146d7a42", "evidence_type": "document", "title": "Page copy", "description": "", "url": "", "content_hash": "57630988a2cfbe5f4dd1d9b39a07d9a286db612c5e72e8c9535020a27b56a9d6", "inline_content": "Landing page shipped: hero, features, pricing sections; responsive; WCAG AA contrast verified.", "submitted_at": "2026-10-18T23:51:42.539707Z", "source_label": "worker", "claimed_relevance": "all criteria"}]
+[client] open_dispute tx=0xcd1141bda98cb650fd393067100ce37977e5406db68c1b7eec5fd2857e5f2569 status=ACCEPTED
+[client] request_verdict tx=0xa21992106e9590a3d5322d4539fa4a9afa241cfc0ab01c48f440b1da029aa459 status=ACCEPTED
+   state after request_verdict: status=resolved reward_deposited=1000000000000000 custody= {"balance": "1999999999999999", "held_total": "1000000000000000", "pending_total": "0", "solvent": true}
+   verdict: {"adjudicated_at": "2026-10-18T23:51:59.137350Z", "criteria_findings": ["met", "met", "met"], "payout_bps_to_worker": 10000, "short_reason": "The only authenticated evidence states the landing page includes hero, features, and pricing sections, is responsive, and has WCAG AA contrast verified. No authenticated evidence contradicts these points, so the acceptance criteria are satisfied.", "snapshot": "dbc8427eea488b22ecd72c021b88fdff112d16af6f846de8b8a33b64ad76328b", "terms_hash": "9d2701ecf5a0c4e7fe172bfe10be79bef8c3b186aaaef545839cb609d10412ae", "unverified": [], "verdict": "fulfilled", "verified_ids": ["EV-0001"]}
+[client] settle tx=0x9425d99f0ed6f126bcf4107782a119c8dd097dc307ca0c0bd4358eafaf21d9c2 status=ACCEPTED
+   state after settle: status=settlement_pending reward_deposited=0 custody= {"balance": "1999999999999999", "held_total": "0", "pending_total": "1000000000000000", "solvent": true}
+[client] settle tx=0x47f8e93cedfbc5add720537ca5df0beedbf4ffe1c87ab928448ba2aa54c57c1a status=ACCEPTED
+   second settle status: ACCEPTED
+[client] confirm_settlements tx=0x764058cf9bb819987273c6b1c74a35157686861790dc4f18a011bfe4b0239c21 status=ACCEPTED
+   state after confirm_settlements: status=settlement_pending reward_deposited=0 custody= {"balance": "999999999999999", "held_total": "0", "pending_total": "1000000000000000", "solvent": true}
+   settlement: {"worker_amount":"1000000000000000","client_amount":"0","currency":"GEN","state":"settlement_pending"}
+   client balance: 0
+   worker balance: 0

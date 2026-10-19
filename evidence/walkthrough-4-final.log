@@ -1,0 +1,29 @@
+   eth_getBalance before : {"worker":"0","client":"0"}
+[client] create_agreement tx=0xb713a153baf23303a7893190ecadd08d7d370441cea14e1b6f17786021ea2c1f status=ACCEPTED
+   state after create: status=draft reward_deposited=0 custody= {"balance": "0", "held_total": "0", "pending_total": "0", "credit_total": "0", "failed_total": "0", "solvent": true}
+[client] fund_agreement tx=0xb48cb4cf47b713d464527037bd3554dc360e0c48544e87ec4999db4cf9f0683f status=ACCEPTED
+   wrong-value fund tx status (expect not FINALIZED/ACCEPTED success): ACCEPTED
+   state after wrong-value fund attempt: status=draft reward_deposited=0 custody= {"balance": "999999999999999", "held_total": "0", "pending_total": "0", "credit_total": "999999999999999", "failed_total": "0", "solvent": true}
+[client] withdraw_credit tx=0x8dbe51a0524198b65da7e3df7f211a9134946eaa3773d408946f7e1cc295e9bc status=ACCEPTED
+   state after withdraw_credit (refused deposit returned): status=draft reward_deposited=0 custody= {"balance": "999999999999999", "held_total": "0", "pending_total": "999999999999999", "credit_total": "0", "failed_total": "0", "solvent": true}
+[client] confirm_settlements tx=0x354dd25a07f3e7c07e050cf490075617dff978ab33a1dccbf9b4fadb5bd7aa5c status=ACCEPTED
+   state after confirm credit withdrawal: status=draft reward_deposited=0 custody= {"balance": "0", "held_total": "0", "pending_total": "0", "credit_total": "0", "failed_total": "0", "solvent": true}
+[client] fund_agreement tx=0x23492234bc4316db9d875d3ff97bf51e14271c0545f5bc68d85ecc0a9ce35aba status=ACCEPTED
+   state after exact funding: status=funded reward_deposited=1000000000000000 custody= {"balance": "1000000000000000", "held_total": "1000000000000000", "pending_total": "0", "credit_total": "0", "failed_total": "0", "solvent": true}
+[worker] accept_agreement tx=0xe179fc65e613e9b6f997f72d71bdd0a1b0330afb93fbe9341b5aaf8d66930ed1 status=ACCEPTED
+[worker] submit_deliverables tx=0xdb21d52c1a2d2993f41ebb6f5ca8b35a25de2df2bfc5d743ec10d8af69a4aa3f status=ACCEPTED
+   evidence sha256 expected: 57630988a2cfbe5f4dd1d9b39a07d9a286db612c5e72e8c9535020a27b56a9d6
+   stored evidence: [{"evidence_id": "EV-0001", "agreement_id": "VL-0001", "submitted_by": "0x9634e3907b37ac293e53867CDd2f5891146d7a42", "evidence_type": "document", "title": "Page copy", "description": "", "url": "", "content_hash": "57630988a2cfbe5f4dd1d9b39a07d9a286db612c5e72e8c9535020a27b56a9d6", "inline_content": "Landing page shipped: hero, features, pricing sections; responsive; WCAG AA contrast verified.", "submitted_at": "2026-10-19T00:26:16.246164Z", "source_label": "worker", "claimed_relevance": "all criteria"}]
+[client] open_dispute tx=0x87456c86cc3265196c3ef9ef619dc0e17763b81d22b1f3b8bd63186fe58c1f33 status=ACCEPTED
+[client] request_verdict tx=0xa1b36c1df60a8f102abcccb757fe2c56439035e614c3011e2fbe3ba59619b3df status=ACCEPTED
+   state after request_verdict: status=resolved reward_deposited=1000000000000000 custody= {"balance": "1000000000000000", "held_total": "1000000000000000", "pending_total": "0", "credit_total": "0", "failed_total": "0", "solvent": true}
+   verdict: {"adjudicated_at": "2026-10-19T00:26:27.297622Z", "criteria_findings": ["met", "met", "met"], "payout_bps_to_worker": 10000, "short_reason": "The only authenticated evidence, permitted under the inline-text evidence rule, affirms all three required sections (hero, features, pricing), responsiveness, and WCAG AA contrast. The client's claim of missing sections is unsupported: no authenticated counter-evidence was supplied, and the dispute itself lists no missing criteria or challenged deliverables.", "snapshot": "dbc8427eea488b22ecd72c021b88fdff112d16af6f846de8b8a33b64ad76328b", "terms_hash": "9d2701ecf5a0c4e7fe172bfe10be79bef8c3b186aaaef545839cb609d10412ae", "unverified": [], "verdict": "fulfilled", "verified_ids": ["EV-0001"]}
+[client] settle tx=0x1eee58408505efb825554da2dcf0a3290c335b1cca4963cf0683f353718f020d status=ACCEPTED
+   state after settle: status=settlement_pending reward_deposited=0 custody= {"balance": "1000000000000000", "held_total": "0", "pending_total": "1000000000000000", "credit_total": "0", "failed_total": "0", "solvent": true}
+[client] settle tx=0x1d0dded48e969fcfad5b0b6a100bb538c22cf270ebdb9a5a52ca53db578794b9 status=ACCEPTED
+   second settle status: ACCEPTED
+[client] confirm_settlements tx=0x7da1da72e15cf7ebc165f47cd3940df7d001ced255108c31de5a206c6ca278fd status=ACCEPTED
+   state after confirm_settlements: status=settled reward_deposited=0 custody= {"balance": "0", "held_total": "0", "pending_total": "0", "credit_total": "0", "failed_total": "0", "solvent": true}
+   settlement: {"worker_amount":"1000000000000000","client_amount":"0","currency":"GEN","state":"settled"}
+   eth_getBalance after  : {"worker":"1000000000000000","client":"0"}
+   worker balance delta  : 1000000000000000 (expected 1000000000000000 )

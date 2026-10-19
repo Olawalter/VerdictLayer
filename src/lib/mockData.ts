@@ -226,7 +226,7 @@ export const MOCK_CASE_VL0002: Agreement = {
     'Figma file links with version history, exported asset files, written communication via email or Slack',
   payout_model: 'full_on_approval',
   created_at: '2025-12-10T09:00:00Z',
-  status: AgreementStatus.Finalized,
+  status: AgreementStatus.Settled,
   funded_at: '2025-12-10T10:00:00Z',
   accepted_at: '2025-12-11T08:00:00Z',
   submitted_at: '2026-01-10T17:10:00Z',

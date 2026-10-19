@@ -47,11 +47,23 @@ const STATUS_CONFIG: Record<
     bg: 'bg-[#22C55E]/10',
     border: 'border-[#22C55E]/30',
   },
-  [AgreementStatus.Finalized]: {
-    label: 'Finalized',
+  [AgreementStatus.SettlementPending]: {
+    label: 'Settlement Pending',
+    color: '#F59E0B',
+    bg: 'bg-[#F59E0B]/10',
+    border: 'border-[#F59E0B]/30',
+  },
+  [AgreementStatus.Settled]: {
+    label: 'Settled',
     color: '#22C55E',
     bg: 'bg-[#22C55E]/15',
     border: 'border-[#22C55E]/40',
+  },
+  [AgreementStatus.Cancelled]: {
+    label: 'Cancelled',
+    color: '#9AA6B2',
+    bg: 'bg-[#9AA6B2]/10',
+    border: 'border-[#9AA6B2]/30',
   },
   [AgreementStatus.Appealed]: {
     label: 'Appealed',

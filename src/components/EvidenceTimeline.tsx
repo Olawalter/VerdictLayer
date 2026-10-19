@@ -119,8 +119,8 @@ function buildTimeline(agreement: Agreement): TimelineEvent[] {
     events.push({
       id: 'finalized',
       type: 'settlement',
-      label: 'Agreement Finalized',
-      description: 'Settlement applied and escrow distributed',
+      label: 'Settlement Queued',
+      description: 'Escrow released into finalized transfers',
       actor: 'Protocol',
       timestamp: agreement.finalized_at,
     })

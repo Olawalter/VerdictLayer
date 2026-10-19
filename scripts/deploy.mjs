@@ -41,14 +41,18 @@ async function deploy() {
   console.log('Deploy tx hash:', hash)
 
   console.log('Waiting for finalization (this may take 30-90 seconds)…')
-  const receipt = await client.waitForTransactionReceipt({
-    hash,
-    status: 7, // FINALIZED
-    retries: 60,
-    interval: 3000,
-  })
+  // waitForTransactionReceipt compares the status as a string and times out on a numeric 7,
+  // so poll the transaction directly.
+  let receipt
+  for (let i = 0; i < 60; i++) {
+    await new Promise((r) => setTimeout(r, 3000))
+    receipt = await client.getTransaction({ hash })
+    if (receipt?.statusName === 'FINALIZED') break
+  }
+  if (receipt?.statusName !== 'FINALIZED') throw new Error(`Deploy not finalized (status: ${receipt?.statusName})`)
 
   const addr =
+    receipt?.recipient ??
     receipt?.contract_address ??
     receipt?.contractAddress ??
     receipt?.to ??
@@ -57,8 +61,8 @@ async function deploy() {
   console.log('\n✅ Deployed!')
   if (addr) {
     console.log('CONTRACT ADDRESS:', addr)
-    console.log('\nUpdate src/lib/genlayer.ts line 8:')
-    console.log(`  export const CONTRACT_ADDRESS = '${addr}' as const`)
+    console.log('\nPoint the frontend at it (e.g. in .env.local):')
+    console.log(`  NEXT_PUBLIC_VERDICTLAYER_ADDRESS=${addr}`)
   } else {
     console.log('Full receipt (find contract address inside):')
     console.log(JSON.stringify(receipt, null, 2))
