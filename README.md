@@ -255,7 +255,7 @@ Each write transaction is submitted to studionet and polled until `FINALIZED` (s
 
 | Variable | Purpose |
 |----------|---------|
-| `NEXT_PUBLIC_VERDICTLAYER_ADDRESS` | Address of the deployed escrow-backed contract (required; there is deliberately no fallback). |
+| `NEXT_PUBLIC_VERDICTLAYER_ADDRESS` | Optional override of the contract address. Defaults to the current studionet deployment in `src/lib/genlayer.ts`. Leave unset on Vercel unless you redeploy. |
 | `PRIVATE_KEY` | Deployer key for `scripts/deploy.mjs` only. |
 
 ---

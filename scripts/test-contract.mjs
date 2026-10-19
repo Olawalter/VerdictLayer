@@ -9,11 +9,7 @@
 import { createClient } from 'genlayer-js'
 import { studionet } from 'genlayer-js/chains'
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VERDICTLAYER_ADDRESS
-if (!CONTRACT_ADDRESS) {
-  console.error('Set NEXT_PUBLIC_VERDICTLAYER_ADDRESS to the deployed (escrow-backed) contract address.')
-  process.exit(2)
-}
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VERDICTLAYER_ADDRESS || '0xD6d60c1dB4064b9EdD7fb70dc893d5B1c0284c2B'
 
 const client = createClient({ chain: studionet })
 

@@ -5,11 +5,11 @@ import { studionet } from 'genlayer-js/chains'
 import { TransactionStatus } from 'genlayer-js/types'
 import type { EIP1193Provider } from './injectedWallets'
 
-// The corrected (escrow-backed) contract must be deployed with `node scripts/deploy.mjs` and its
-// address supplied via NEXT_PUBLIC_VERDICTLAYER_ADDRESS. The pre-remediation deployment recorded
-// notional amounts only (no payable methods, no settlement path) and is intentionally NOT used as
-// a fallback.
-export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VERDICTLAYER_ADDRESS ?? '') as `0x${string}` | ''
+// Current escrow-backed deployment on GenLayer Studio (studionet). Verified live: see REPLY.md.
+// NEXT_PUBLIC_VERDICTLAYER_ADDRESS is an optional override (e.g. for a redeploy) and is not required.
+// The pre-remediation deployment (0x42248f...) recorded notional amounts only and must not be used.
+export const DEFAULT_CONTRACT_ADDRESS = '0xD6d60c1dB4064b9EdD7fb70dc893d5B1c0284c2B' as const
+export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VERDICTLAYER_ADDRESS || DEFAULT_CONTRACT_ADDRESS) as `0x${string}`
 
 function contractAddress(): `0x${string}` {
   if (!CONTRACT_ADDRESS) {
